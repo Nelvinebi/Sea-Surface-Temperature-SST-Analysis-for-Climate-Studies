@@ -1,0 +1,82 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.linear_model import LinearRegression
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+# 1. Generate Synthetic SST Data (120 months = 10 years)
+np.random.seed(42)
+n_samples = 120
+months = pd.date_range(start='2015-01', periods=n_samples, freq='M')
+trend = np.linspace(25, 27, n_samples)  # long-term warming trend
+seasonal = 1.5 * np.sin(2 * np.pi * months.month / 12)  # seasonal variation
+noise = np.random.normal(0, 0.4, n_samples)  # random variation
+sst = trend + seasonal + noise
+
+# Create DataFrame
+df = pd.DataFrame({
+    'Date': months,
+    'SST': sst
+})
+df.set_index('Date', inplace=True)
+
+# 2. Plot Time Series
+plt.figure(figsize=(12, 5))
+plt.plot(df.index, df['SST'], label='Synthetic SST')
+plt.title('Synthetic Sea Surface Temperature Over Time')
+plt.xlabel('Year')
+plt.ylabel('SST (°C)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# 3. Decompose Time Series
+decomposition = seasonal_decompose(df['SST'], model='additive', period=12)
+decomposition.plot()
+plt.suptitle('Seasonal Decomposition of SST', fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# 4. Linear Regression for Trend Detection
+df['TimeIndex'] = np.arange(n_samples)
+model = LinearRegression()
+model.fit(df['TimeIndex'].values.reshape(-1, 1), df['SST'])
+
+df['Trend'] = model.predict(df['TimeIndex'].values.reshape(-1, 1))
+
+# Plot SST with Trend
+plt.figure(figsize=(12, 5))
+plt.plot(df.index, df['SST'], label='SST', alpha=0.6)
+plt.plot(df.index, df['Trend'], label='Linear Trend', color='red', linewidth=2)
+plt.title('SST with Linear Trend (Climate Change Indicator)')
+plt.xlabel('Year')
+plt.ylabel('SST (°C)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# 5. Anomaly Detection (based on deviation from trend)
+df['Anomaly'] = df['SST'] - df['Trend']
+threshold = 1.0  # degrees Celsius
+anomalies = df[np.abs(df['Anomaly']) > threshold]
+
+# Plot Anomalies
+plt.figure(figsize=(12, 5))
+plt.plot(df.index, df['SST'], label='SST')
+plt.scatter(anomalies.index, anomalies['SST'], color='red', label='Anomalies')
+plt.title('SST Anomalies Detection')
+plt.xlabel('Year')
+plt.ylabel('SST (°C)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# 6. Print Summary Statistics
+print("\nSummary Statistics:")
+print(df[['SST', 'Anomaly']].describe())
+
+print(f"\nDetected {len(anomalies)} anomalies (deviation > {threshold}°C from trend).")
